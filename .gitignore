@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Environments
+.venv/
+venv/
+env/
+.env
+.env.*
+!.env.example
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Project data and large artifacts
+data/raw/
+data/interim/
+data/external/
+data/cache/
+outputs/*
+artifacts/
+models/
+checkpoints/
+logs/
+
+# Keep directory placeholders when needed
+!data/.gitkeep
+!outputs/
+!outputs/.gitkeep
+
+# Local/editor files
+.vscode/
+.idea/
+*.tmp
+*.log
+Thumbs.db
+Desktop.ini
