@@ -10,6 +10,16 @@
 
 本项目建立一套面向 ECOTOX 全量数据的多物种、多毒性终点深度学习 QSAR 框架。第一阶段的核心目标是建立可并行开发的数据契约、特征模块、显式毒理规则层、模型训练模块、预测服务模块、SSD 风险模块和科研图表样式库。
 
+正式接口规范拆分在以下文档中，后续开发以这些文件为准：
+
+- `docs/DATA_CONTRACT.md`
+- `docs/CONFIG_SPEC.md`
+- `docs/DESCRIPTOR_GROUPING.md`
+- `docs/RULE_LAYER.md`
+- `docs/MODEL_ARCHITECTURE.md`
+- `docs/EVALUATION_PROTOCOL.md`
+- `docs/MODULE_TASKS.md`
+
 两个最终应用入口：
 
 1. 毒性预测：用户输入物种学名或物种 ID，以及 SMILES、CASRN、DTXSID 等化合物一对一标识，模型输出毒性预测值、不确定度、应用域、规则解释和相似训练样本。
