@@ -81,6 +81,8 @@
 
 ## 6. 任务 E：物种上下文特征
 
+当前状态：暂缓。物种特征仍在构建中，第一波并行开发不实现该模块。
+
 交付：
 
 - `src/qsar_dl/features/species.py`
@@ -112,6 +114,8 @@
 
 ## 8. 任务 G：传统 ML baseline
 
+当前状态：等待 B/C/D 接口稳定后启动。
+
 交付：
 
 - `src/qsar_dl/training/baseline_ml.py`
@@ -125,6 +129,8 @@
 - 输出 metrics 和 predictions。
 
 ## 9. 任务 H：深度模型
+
+当前状态：等待 B/C/D/F 接口稳定后启动。
 
 交付：
 

@@ -1,0 +1,86 @@
+chemical_features:
+  smiles_column: smiles
+  identifier_columns:
+    - chemical_id
+    - casrn
+    - cas_number
+    - dtxsid
+  deduplicate: true
+  deduplicate_columns:
+    - chemical_id
+    - casrn
+    - cas_number
+    - dtxsid
+    - smiles
+
+  rdkit:
+    normalize_smiles: true
+    descriptor_set: compact_qsar
+    descriptors:
+      - molecular_weight_rdkit_g_mol
+      - rdkit_descriptor_mol_wt
+      - rdkit_descriptor_exact_mol_wt
+      - rdkit_descriptor_mol_logp
+      - rdkit_descriptor_tpsa
+      - rdkit_descriptor_h_bond_donors
+      - rdkit_descriptor_h_bond_acceptors
+      - rdkit_descriptor_rotatable_bonds
+      - rdkit_descriptor_ring_count
+      - rdkit_descriptor_heavy_atom_count
+      - rdkit_descriptor_fraction_csp3
+      - rdkit_descriptor_formal_charge
+
+  fingerprints:
+    enabled: true
+    type: morgan
+    radius: 2
+    n_bits: 2048
+    prefix: morgan_fp_
+    use_chirality: false
+
+  physchem:
+    prefer_external: true
+    molecular_weight_priority:
+      - rdkit
+      - external
+    required_output_fields:
+      - molecular_weight_g_mol
+      - logkow
+      - logd
+      - water_solubility
+      - henry_law_constant
+      - koc
+    external_columns:
+      molecular_weight_g_mol:
+        - molecular_weight_g_mol
+        - molecular_weight
+        - mw
+        - average_mass
+        - AVERAGE_MASS
+      logkow:
+        - logkow
+        - log_kow
+        - logKow
+        - logp
+        - logP
+      logd:
+        - logd
+        - log_d
+        - logD
+      water_solubility:
+        - water_solubility
+        - water_solubility_mg_l
+        - solubility
+        - aqueous_solubility
+      henry_law_constant:
+        - henry_law_constant
+        - henry_constant
+        - henry
+      koc:
+        - koc
+        - KOC
+        - organic_carbon_partition_coefficient
+
+  output:
+    write: false
+    features_table: outputs/features/chemical_features.parquet

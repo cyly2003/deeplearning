@@ -1,0 +1,20 @@
+# Publication plotting defaults for evaluation and SSD figures.
+style:
+  language: auto
+  title_size: 20
+  label_size: 18
+  tick_size: 18
+  text_size: 18
+  legend_size: 16
+  font_weight: bold
+  axis_linewidth: 1.5
+  dpi: 300
+  palette: journal
+
+export:
+  formats:
+    - png
+    - tiff
+    - pdf
+    - svg
+  dpi: 300

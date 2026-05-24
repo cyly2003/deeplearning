@@ -1,0 +1,16 @@
+experiment:
+  id: main_residual_qsar_v001
+  seed: 20260524
+  output_dir: outputs/models/${experiment.id}
+includes:
+  data: configs/data/ecotox_clean_sqlite.yaml
+  chemical_features: configs/features/chemical_rdkit_morgan.yaml
+  species_features: configs/features/species_context.yaml
+  descriptor_groups: configs/features/descriptor_groups_rdkit.yaml
+  rules: configs/rules/mechanistic_rules.yaml
+  evaluation: configs/evaluation/chemical_category_holdout.yaml
+  runtime: configs/runtime/local.yaml
+model:
+  name: neutral_residual_qsar
+  architecture: rule_aware_residual_mlp
+  target_column: target_ptox

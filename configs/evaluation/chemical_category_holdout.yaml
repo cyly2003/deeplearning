@@ -1,0 +1,21 @@
+evaluation:
+  split_strategy: chemical_category_holdout
+  category_assignment_table: outputs/tables/chemical_category_assignments.csv
+  split_table: outputs/tables/data_splits.parquet
+  report_json: outputs/reports/split_report.json
+  categories:
+    - PAHs
+    - TPHs
+    - chlorinated_organics
+    - PFAS
+    - pesticides
+    - pharmaceuticals_personal_care_products
+    - phenols
+    - organophosphates
+    - metals_metalloids
+    - surfactants
+    - dyes
+    - solvents_vocs
+    - other_unknown
+  validation_fraction_within_train_categories: 0.15
+  holdout_categories: []

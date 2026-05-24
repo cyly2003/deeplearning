@@ -1,0 +1,12 @@
+species:
+  enabled: false
+  status: deferred
+  reason: Species context features are still under construction.
+  primary_medium_field: primary_medium
+  lifestage_field: organism_lifestage
+  missing_category: unknown
+  include_taxonomy: false
+  include_eco_group: false
+  include_primary_medium: true
+  include_lifestage: false
+  include_potential_routes: false

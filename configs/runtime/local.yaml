@@ -1,0 +1,6 @@
+runtime:
+  device: auto
+  num_workers: 0
+logging:
+  level: INFO
+  save_resolved_config: true

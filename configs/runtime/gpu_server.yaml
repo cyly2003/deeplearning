@@ -1,0 +1,6 @@
+runtime:
+  device: cuda
+  num_workers: 4
+logging:
+  level: INFO
+  save_resolved_config: true

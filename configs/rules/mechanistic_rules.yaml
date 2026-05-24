@@ -1,0 +1,54 @@
+rules:
+  aquatic_hydrophobicity:
+    enabled: true
+    logkow_min: -1
+    logkow_max: 6
+    a_group: 2.0
+    b_group: 0.45
+
+  solubility:
+    enabled: true
+    near_saturation_ratio: 1
+    no_effects_ratio: 10
+
+  chemical_activity:
+    enabled: false
+    status: TODO until C_free_mol_l and S_w_mol_l fields are standardized.
+
+  moa_excess_toxicity:
+    enabled: false
+    status: TODO until MoA, ToxCast, and alert inputs are standardized.
+
+  duration:
+    enabled: true
+    gamma_grid: [0.1, 0.25, 0.5, 1.0]
+    standard_hours:
+      fish_lc50: 96
+      daphnia_ec50: 48
+      daphnia_lc50: 48
+      algae_ec50: 72
+
+  tktd:
+    enabled: false
+    status: TODO; must not be added together with duration as a final correction.
+
+  volatility:
+    enabled: false
+    status: TODO until Henry constant and vapor pressure fields are standardized.
+
+  bioavailability:
+    enabled: false
+    status: TODO; do not fabricate free concentration when f_OC is missing.
+
+  ionization:
+    enabled: true
+    ionized_fraction_threshold: 0.5
+
+  molecular_weight:
+    enabled: true
+    passive_threshold_mw: 600
+    passive_penalty_width: 400
+
+  route_access:
+    enabled: false
+    status: disabled until task E species potential-route features are available.

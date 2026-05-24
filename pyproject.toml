@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "qsar-dl"
+version = "0.1.0"
+description = "Domain-guided multi-species QSAR deep learning framework."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "numpy",
+  "pandas",
+  "scikit-learn",
+  "pyyaml",
+]
+
+[project.optional-dependencies]
+chem = ["rdkit"]
+deep = ["torch"]
+viz = ["matplotlib", "seaborn"]
+boosting = ["xgboost", "lightgbm"]
+dev = ["pytest"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-q"
