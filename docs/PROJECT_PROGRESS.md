@@ -449,3 +449,51 @@ E:\TOOLS\anaconda\envs\qsar-ph3\python.exe src\run_deep_tuning_experiment.py `
 - `深度调参_验证集残差分层_物种类群`
 
 下一步建议固定 `ctx_lr1e3_wd1e3_do20`，开展 endpoint、化学类别、物种类群和 AD 分层指标表，再决定是否做 endpoint 专属模型或类别重加权。
+
+### 7.7 已完成：endpoint 语义重编码与指纹 A/B/C/D 消融
+
+已新增诊断入口：
+
+```powershell
+E:\TOOLS\anaconda\envs\qsar-ph3\python.exe src\run_endpoint_fingerprint_ablation.py `
+  --output-dir outputs\models\endpoint_fingerprint_ablation_v001
+```
+
+诊断报告：
+
+- `docs/ENDPOINT_FINGERPRINT_ABLATION_REPORT.md`
+
+本轮按新的 endpoint 解释逻辑执行：
+
+- `LCx` 不再作为独立 endpoint family，而是并入 `ECx` 的 `mortality` 响应域。
+- `ECx`、`LOEC`、`NOEC` 分开建模。
+- `ECx/LCx` 后面的数字作为连续效应水平特征。
+- `LOEC/NOEC` 作为阈值型统计终点，不与 ECx 点估计混合训练。
+
+全量数据范围：
+
+| 任务 | 记录数 | 训练样本数 | 验证样本数 |
+|---|---:|---:|---:|
+| ECx + LCx mortality | 153,327 | 131,051 | 22,276 |
+| LOEC | 80,977 | 68,860 | 12,117 |
+| NOEC | 106,736 | 92,052 | 14,684 |
+
+全量 LightGBM 结果：
+
+| 任务 | 最佳特征组 | 验证 R2 | 验证 RMSE | 验证 MAE |
+|---|---|---:|---:|---:|
+| ECx + LCx mortality | C 2048 位指纹 | 0.535 | 1.259 | 0.960 |
+| LOEC | B 512 位指纹 | 0.381 | 1.426 | 1.104 |
+| NOEC | C 2048 位指纹 | 0.465 | 1.327 | 1.062 |
+
+关键解释：
+
+- endpoint 语义重编码后，ECx 任务已达到 R2=0.535，说明粗粒度 `LC/EC/LOEC` 混合确实压低了总体模型表现。
+- LOEC 对高维 fingerprint 最敏感，2048 位指纹使 R2 从 0.381 降到 0.325，提示 LOEC 上存在高维稀疏噪声或过拟合风险。
+- NOEC 中 2048 位 fingerprint 有增益，但相对无指纹方案只提升约 0.020 R2，后续仍应优先做响应域、试验时长和 AD 分层诊断。
+
+输出目录：
+
+- `outputs/models/endpoint_fingerprint_ablation_v001/`
+- `outputs/models/endpoint_fingerprint_ablation_v001/表格/endpoint_ABCD_全部任务模型指标汇总.csv`
+- `outputs/models/endpoint_fingerprint_ablation_v001/图表/`
