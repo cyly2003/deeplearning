@@ -328,3 +328,54 @@ curated baseline 当前主结果如下：
 - 化学类别中 `fluorinated_organic`、`unclassified` 和 `pharmaceutical_pcp` 是主要高误差类别。
 - 物种类群中 `amphibian`、`cyanobacteria` 和 `algae` 是主要高误差类群。
 - 当前 AD 分层验证集全部为 `AD内`，说明 AD 规则仍偏宽松，下一轮应补充 Morgan fingerprint Tanimoto、descriptor 距离和类别外推标记。
+
+### 7.5 已完成：真实数据 deep baseline 训练入口
+
+已新增深度学习真实数据训练链路：
+
+- 训练模块：`src/qsar_dl/training/train_deep.py`
+- 命令行入口：`src/run_deep_qsar_experiment.py`
+- 配置文件：`configs/experiments/baseline_deep.yaml`
+- 开发记录：`docs/DEEP_QSAR_DEVELOPMENT.md`
+
+当前 deep baseline 是 conservative chemical-only 版本：
+
+- 输入：15 个结构/物化描述符 + 2,048 位 Morgan fingerprint。
+- 不启用 species context。
+- 不启用 exposure duration。
+- 不启用 endpoint one-hot。
+- 不启用 mechanistic rule residual。
+
+本地默认配置：
+
+| 参数 | 当前值 |
+|---|---:|
+| `max_rows` | 12,000 |
+| `batch_size` | 256 |
+| `max_epochs` | 5 |
+| `learning_rate` | 0.001 |
+| `weight_decay` | 0.0001 |
+| `patience` | 3 |
+
+已完成真实数据 smoke：
+
+```powershell
+E:\TOOLS\anaconda\envs\qsar-ph3\python.exe src\run_deep_qsar_experiment.py --device cpu
+```
+
+输出目录：
+
+- `outputs/models/baseline_deep_v001/`
+
+当前结果：
+
+| 数据集 | 样本数 | R2 | RMSE | MAE | MAPE |
+|---|---:|---:|---:|---:|---:|
+| 训练集 | 9,873 | 0.483 | 1.383 | 1.087 | 29.78% |
+| 验证集 | 2,127 | 0.275 | 1.509 | 1.206 | 24.59% |
+
+解释：
+
+- 该结果低于当前 curated 传统 ML baseline 的 `standard + LightGBM`，但这是预期内结果。
+- 当前 deep 模型只验证结构分支训练链路，尚未加入 endpoint、duration、species/taxon residual。
+- 后续应按消融顺序继续：chemical-only 全量/服务器训练 -> endpoint/duration -> species/taxon -> AD -> mechanistic-rule residual。

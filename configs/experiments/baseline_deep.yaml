@@ -14,21 +14,20 @@ model:
   name: baseline_deep_residual_qsar
   architecture: residual_qsar_mlp
   target_column: target_ptox
-  dimensions:
-    descriptor_group_dim: 9
-    descriptor_global_dim: 1
-    fingerprint_dim: 2048
-    species_context_dim: 0
-    rule_feature_dim: 0
   chemical_encoder:
     use_descriptor_grouping: true
     use_morgan_fingerprint: true
-    hidden_dims: [512, 256]
-    embedding_dim: 256
+    hidden_dims: [256, 128]
+    embedding_dim: 128
     dropout: 0.1
+  head_hidden_dims: [128, 64]
   context_encoder:
     use_species: false
     use_duration: false
+    use_endpoint: false
+    hidden_dims: [64]
+    species_embedding_dim: 32
+    time_embedding_dim: 16
   rule_encoder:
     enabled: false
   residual:
@@ -38,6 +37,30 @@ model:
     rule_l2: 0.01
 training:
   smoke_helper: qsar_dl.training.train_deep.run_small_train_smoke
-  batch_size: 16
-  max_epochs: 1
+  # Keep this conservative for local verification. Increase max_rows/max_epochs
+  # or use the server runbook for formal full-data training.
+  max_rows: 12000
+  batch_size: 256
+  max_epochs: 5
   learning_rate: 0.001
+  weight_decay: 0.0001
+  patience: 3
+  device: auto
+deep_features:
+  descriptor_columns:
+    - rdkit_descriptor_mol_wt
+    - rdkit_descriptor_exact_mol_wt
+    - rdkit_descriptor_mol_logp
+    - rdkit_descriptor_tpsa
+    - rdkit_descriptor_h_bond_donors
+    - rdkit_descriptor_h_bond_acceptors
+    - rdkit_descriptor_rotatable_bonds
+    - rdkit_descriptor_ring_count
+    - rdkit_descriptor_heavy_atom_count
+    - rdkit_descriptor_fraction_csp3
+    - rdkit_descriptor_formal_charge
+    - molecular_weight_g_mol
+    - logkow
+    - molecular_weight_g_mol_missing_flag
+    - logkow_missing_flag
+  fingerprint_prefix: morgan_fp_
