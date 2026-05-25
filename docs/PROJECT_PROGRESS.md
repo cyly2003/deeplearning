@@ -329,7 +329,7 @@ curated baseline 当前主结果如下：
 - 物种类群中 `amphibian`、`cyanobacteria` 和 `algae` 是主要高误差类群。
 - 当前 AD 分层验证集全部为 `AD内`，说明 AD 规则仍偏宽松，下一轮应补充 Morgan fingerprint Tanimoto、descriptor 距离和类别外推标记。
 
-### 7.5 已完成：真实数据 deep baseline 训练入口
+### 7.5 已完成：真实数据 deep baseline 训练入口与全量消融
 
 已新增深度学习真实数据训练链路：
 
@@ -338,44 +338,57 @@ curated baseline 当前主结果如下：
 - 配置文件：`configs/experiments/baseline_deep.yaml`
 - 开发记录：`docs/DEEP_QSAR_DEVELOPMENT.md`
 
-当前 deep baseline 是 conservative chemical-only 版本：
+当前 deep baseline 已从 chemical-only smoke 推进到全量三组消融：
 
-- 输入：15 个结构/物化描述符 + 2,048 位 Morgan fingerprint。
-- 不启用 species context。
-- 不启用 exposure duration。
-- 不启用 endpoint one-hot。
-- 不启用 mechanistic rule residual。
+| 消融实验 | 化合物结构 | Endpoint | Duration | Species/Taxon | 规则层 |
+|---|---|---|---|---|---|
+| `chemical_only` | 是 | 否 | 否 | 否 | 否 |
+| `chemical_endpoint_duration` | 是 | 是 | 是 | 否 | 否 |
+| `chemical_species_context` | 是 | 是 | 是 | 是 | 否 |
 
-本地默认配置：
+默认配置：
 
 | 参数 | 当前值 |
 |---|---:|
-| `max_rows` | 12,000 |
-| `batch_size` | 256 |
-| `max_epochs` | 5 |
+| `max_rows` | null |
+| `batch_size` | 1,024 |
+| `max_epochs` | 8 |
 | `learning_rate` | 0.001 |
 | `weight_decay` | 0.0001 |
 | `patience` | 3 |
 
-已完成真实数据 smoke：
+已完成全量运行：
 
 ```powershell
-E:\TOOLS\anaconda\envs\qsar-ph3\python.exe src\run_deep_qsar_experiment.py --device cpu
+E:\TOOLS\anaconda\envs\qsar-ph3\python.exe src\run_deep_qsar_experiment.py `
+  --device cpu `
+  --output-dir outputs\models\deep_ablation_full_v001
 ```
 
 输出目录：
 
-- `outputs/models/baseline_deep_v001/`
+- `outputs/models/deep_ablation_full_v001/`
 
-当前结果：
+全量数据范围：
 
-| 数据集 | 样本数 | R2 | RMSE | MAE | MAPE |
+| 指标 | 数量 |
+|---|---:|
+| 主水相任务记录数 | 226,123 |
+| 训练集记录数 | 185,158 |
+| 验证集记录数 | 40,965 |
+| 化合物数 | 4,987 |
+
+全量消融结果：
+
+| 消融实验 | 训练 R2 | 验证 R2 | 验证 RMSE | 验证 MAE | 验证 MAPE |
 |---|---:|---:|---:|---:|---:|
-| 训练集 | 9,873 | 0.483 | 1.383 | 1.087 | 29.78% |
-| 验证集 | 2,127 | 0.275 | 1.509 | 1.206 | 24.59% |
+| `chemical_only` | 0.590 | 0.288 | 1.489 | 1.150 | 32.60% |
+| `chemical_endpoint_duration` | 0.637 | 0.350 | 1.423 | 1.096 | 33.24% |
+| `chemical_species_context` | 0.711 | 0.413 | 1.351 | 1.026 | 32.32% |
 
 解释：
 
-- 该结果低于当前 curated 传统 ML baseline 的 `standard + LightGBM`，但这是预期内结果。
-- 当前 deep 模型只验证结构分支训练链路，尚未加入 endpoint、duration、species/taxon residual。
-- 后续应按消融顺序继续：chemical-only 全量/服务器训练 -> endpoint/duration -> species/taxon -> AD -> mechanistic-rule residual。
+- 消融结果符合原始三层 residual-QSAR 设计：结构主效应是基础，endpoint/duration 带来增益，species/taxon context 进一步改善跨物种预测。
+- 当前最佳 deep 模型仍低于 curated 传统 ML 的 `standard + LightGBM`，但已经证明上下文残差层有效。
+- 规则层仍保持禁用，因为 mechanistic-rule residual 尚未校准，不能用于正式机制解释。
+- 已输出对应可视化图表：验证集指标对比、训练/验证损失曲线、验证集真实-预测散点、endpoint/化学类别/物种类群残差箱线图。

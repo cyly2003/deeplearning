@@ -45,67 +45,59 @@
 - 不启用 mechanistic rule residual。
 - 不启用 endpoint one-hot。
 
-默认本地配置较保守：
+当前默认配置已改为全量消融：
 
 | 参数 | 当前值 |
 |---|---:|
-| `max_rows` | 12,000 |
-| `batch_size` | 256 |
-| `max_epochs` | 5 |
+| `max_rows` | null |
+| `batch_size` | 1,024 |
+| `max_epochs` | 8 |
 | `learning_rate` | 0.001 |
 | `weight_decay` | 0.0001 |
 | `patience` | 3 |
 | device | `auto` |
 
-## 4. 本地真实数据 baseline 结果
+## 4. 全量消融结果
 
 运行命令：
 
 ```powershell
-E:\TOOLS\anaconda\envs\qsar-ph3\python.exe src\run_deep_qsar_experiment.py --device cpu
+E:\TOOLS\anaconda\envs\qsar-ph3\python.exe src\run_deep_qsar_experiment.py `
+  --device cpu `
+  --output-dir outputs\models\deep_ablation_full_v001
 ```
 
 输出目录：
 
-- `outputs/models/baseline_deep_v001/`
+- `outputs/models/deep_ablation_full_v001/`
 
 数据范围：
 
 | 指标 | 数量 |
 |---|---:|
-| 采样记录数 | 12,000 |
-| 训练集记录数 | 9,873 |
-| 验证集记录数 | 2,127 |
-| 化合物数 | 1,829 |
-| 训练集 target mean | 5.617 |
-| 训练集 target std | 1.922 |
+| 主水相任务记录数 | 226,123 |
+| 训练集记录数 | 185,158 |
+| 验证集记录数 | 40,965 |
+| 化合物数 | 4,987 |
 
-模型结构：
+消融结果：
 
-| 项目 | 数量 |
-|---|---:|
-| 描述符输入维度 | 15 |
-| fingerprint 输入维度 | 2,048 |
-| endpoint 输入维度 | 0 |
-| species context 输入维度 | 0 |
-
-指标：
-
-| 数据集 | R2 | RMSE | MAE | MAPE |
+| 消融实验 | 验证 R2 | 验证 RMSE | 验证 MAE | 验证 MAPE |
 |---|---:|---:|---:|---:|
-| 训练集 | 0.483 | 1.383 | 1.087 | 29.78% |
-| 验证集 | 0.275 | 1.509 | 1.206 | 24.59% |
+| `chemical_only` | 0.288 | 1.489 | 1.150 | 32.60% |
+| `chemical_endpoint_duration` | 0.350 | 1.423 | 1.096 | 33.24% |
+| `chemical_species_context` | 0.413 | 1.351 | 1.026 | 32.32% |
 
 ## 5. 科研解释
 
-当前 deep baseline 弱于 curated 传统 ML baseline 中的 `standard + LightGBM`，这是预期内结果，不应解释为深度学习路线失败。主要原因：
+当前 deep baseline 仍弱于 curated 传统 ML baseline 中的 `standard + LightGBM`，但全量消融已经验证了原始三层设计方向：
 
-- 当前只训练 5 epoch，且仅使用 12,000 条本地采样数据。
-- chemical-only MLP 尚未加入 endpoint、暴露时长和物种类群差异。
-- ECOTOX 合并任务中 LC/EC/LOEC 异质性明显，chemical-only 模型难以单独解释 endpoint 差异。
-- 含氟有机物、未分类化合物、两栖类和蓝藻类误差偏高，提示需要 context residual 和更强 AD 约束。
+- chemical-only 是结构主效应基线。
+- endpoint + duration 带来验证 R2 提升，说明实验上下文确实解释了多 endpoint 合并任务的系统差异。
+- species/taxon context 进一步提升，说明物种上下文残差层对多物种 QSAR 有实际贡献。
+- 训练和验证仍存在差距，后续需要加强正则化、AD 和外推类别评估。
 
-当前结果的价值在于建立了可运行的深度学习训练基座，并形成了与传统 ML baseline 可比较的指标出口。
+当前结果的价值在于：三层 residual-QSAR 框架已经从概念设计推进到全量真实数据消融验证。
 
 ## 6. 下一步开发顺序
 

@@ -37,11 +37,11 @@ model:
     rule_l2: 0.01
 training:
   smoke_helper: qsar_dl.training.train_deep.run_small_train_smoke
-  # Keep this conservative for local verification. Increase max_rows/max_epochs
-  # or use the server runbook for formal full-data training.
-  max_rows: 12000
-  batch_size: 256
-  max_epochs: 5
+  # Full-data ablations should run on all main-water-task records by default.
+  # Use CLI --max-rows only for smoke tests.
+  max_rows: null
+  batch_size: 1024
+  max_epochs: 8
   learning_rate: 0.001
   weight_decay: 0.0001
   patience: 3
@@ -64,3 +64,40 @@ deep_features:
     - molecular_weight_g_mol_missing_flag
     - logkow_missing_flag
   fingerprint_prefix: morgan_fp_
+  species_context_columns: []
+ablation_suite:
+  - id: chemical_only
+    label: Chemical only
+    description: Chemical structure branch only; no endpoint, duration, species, or rule residual.
+    model:
+      context_encoder:
+        use_endpoint: false
+        use_duration: false
+    deep_features:
+      species_context_columns: []
+  - id: chemical_endpoint_duration
+    label: Chemical + endpoint + duration
+    description: Adds endpoint one-hot and exposure-duration residual while keeping species context disabled.
+    model:
+      context_encoder:
+        use_endpoint: true
+        use_duration: true
+    deep_features:
+      species_context_columns: []
+  - id: chemical_species_context
+    label: Chemical + endpoint + duration + species
+    description: Adds endpoint, duration, primary medium, lifestage, and taxon context residual.
+    model:
+      context_encoder:
+        use_endpoint: true
+        use_duration: true
+    deep_features:
+      species_context_columns:
+        - primary_medium
+        - organism_lifestage
+        - taxon_group_l1
+        - taxon_group_l2
+        - taxon_group_l3
+        - is_standard_test_species
+        - is_us_invasive_species
+        - is_us_threatened_endangered

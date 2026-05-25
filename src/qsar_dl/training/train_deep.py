@@ -9,6 +9,7 @@ from collections.abc import Mapping, Sequence
 
 import numpy as np
 import pandas as pd
+from pandas.api.types import is_bool_dtype, is_numeric_dtype
 
 from qsar_dl.training.baseline_ml import evaluate_regression
 from qsar_dl.models.residual_qsar import ResidualQSARModel
@@ -55,6 +56,8 @@ class DeepFeatureSpec:
     fingerprint_columns: list[str]
     endpoint_columns: list[str]
     species_context_columns: list[str]
+    species_numeric_columns: list[str]
+    species_categorical_columns: list[str]
     use_duration: bool
 
 
@@ -402,6 +405,8 @@ def run_real_data_deep_qsar(
             "fingerprint_columns": spec.fingerprint_columns,
             "endpoint_columns": spec.endpoint_columns,
             "species_context_columns": spec.species_context_columns,
+            "species_numeric_columns": spec.species_numeric_columns,
+            "species_categorical_columns": spec.species_categorical_columns,
             "use_duration": spec.use_duration,
         },
         "dataset": {
@@ -484,16 +489,26 @@ def build_deep_feature_spec(
         else []
     )
     requested_species = species_context_columns or feature_cfg.get("species_context_columns")
-    species_resolved = [
-        str(column)
-        for column in requested_species or ()
-        if str(column) in data.columns
-    ]
+    species_numeric: list[str] = []
+    species_categorical: list[str] = []
+    species_resolved: list[str] = []
+    for raw_column in requested_species or ():
+        column = str(raw_column)
+        if column not in data.columns:
+            continue
+        if is_numeric_dtype(data[column]) or is_bool_dtype(data[column]):
+            species_numeric.append(column)
+            species_resolved.append(column)
+        else:
+            species_categorical.append(column)
+            species_resolved.extend(_one_hot_columns(data, column))
     return DeepFeatureSpec(
         descriptor_columns=descriptor_resolved,
         fingerprint_columns=fingerprint_resolved,
         endpoint_columns=endpoint_columns,
         species_context_columns=species_resolved,
+        species_numeric_columns=species_numeric,
+        species_categorical_columns=species_categorical,
         use_duration=bool(context_cfg.get("use_duration", False)),
     )
 
@@ -529,7 +544,18 @@ def _prepare_deep_arrays(
         arrays["endpoint_features"] = pd.DataFrame(index=data.index)
 
     if spec.species_context_columns:
-        species = _numeric_frame(data, spec.species_context_columns)
+        species_parts: list[pd.DataFrame] = []
+        if spec.species_numeric_columns:
+            species_parts.append(_numeric_frame(data, spec.species_numeric_columns))
+        for categorical_column in spec.species_categorical_columns:
+            encoded_columns = [
+                column
+                for column in spec.species_context_columns
+                if column.startswith(f"{categorical_column}_")
+            ]
+            if encoded_columns:
+                species_parts.append(_one_hot_frame(data, categorical_column, encoded_columns))
+        species = pd.concat(species_parts, axis=1) if species_parts else pd.DataFrame(index=data.index)
         species_scaled, species_center, species_scale = _standardize_frame(
             species,
             train_mask=train_mask,
