@@ -392,3 +392,60 @@ E:\TOOLS\anaconda\envs\qsar-ph3\python.exe src\run_deep_qsar_experiment.py `
 - 当前最佳 deep 模型仍低于 curated 传统 ML 的 `standard + LightGBM`，但已经证明上下文残差层有效。
 - 规则层仍保持禁用，因为 mechanistic-rule residual 尚未校准，不能用于正式机制解释。
 - 已输出对应可视化图表：验证集指标对比、训练/验证损失曲线、验证集真实-预测散点、endpoint/化学类别/物种类群残差箱线图。
+
+### 7.6 已完成：deep species-context 全量调参批次 01
+
+已新增全量调参入口：
+
+```powershell
+E:\TOOLS\anaconda\envs\qsar-ph3\python.exe src\run_deep_tuning_experiment.py `
+  --device cpu `
+  --output-dir outputs\models\deep_tuning_batch01
+```
+
+调参报告：
+
+- `docs/DEEP_TUNING_BATCH01_REPORT.md`
+
+本轮固定上一轮消融最优结构 `chemical_species_context`，在全量主水相任务上比较 6 组学习率、权重衰减、dropout 和 batch size 设置。所有候选均启用化合物结构、endpoint、duration 和 species/taxon context，规则层继续禁用。
+
+全量数据范围：
+
+| 指标 | 数量 |
+|---|---:|
+| 主水相任务记录数 | 226,123 |
+| 训练集记录数 | 185,158 |
+| 验证集记录数 | 40,965 |
+| 化合物数 | 4,987 |
+
+全量调参结果：
+
+| 调参实验 | 训练 R2 | 验证 R2 | 验证 RMSE | 验证 MAE | 验证 MAPE |
+|---|---:|---:|---:|---:|---:|
+| `ctx_baseline_lr1e3_wd1e4_do10` | 0.711 | 0.413 | 1.351 | 1.026 | 32.32% |
+| `ctx_lr3e4_wd1e3_do20` | 0.649 | 0.386 | 1.383 | 1.061 | 32.84% |
+| `ctx_lr3e4_wd1e4_do20` | 0.649 | 0.386 | 1.383 | 1.061 | 32.84% |
+| `ctx_lr1e3_wd1e3_do20` | 0.698 | 0.434 | 1.327 | 1.011 | 32.85% |
+| `ctx_lr1e3_wd1e3_do30_bs512` | 0.698 | 0.412 | 1.353 | 1.026 | 30.61% |
+| `ctx_lr2e3_wd1e3_do20` | 0.725 | 0.414 | 1.350 | 1.032 | 30.57% |
+
+当前最佳 deep 候选：
+
+- `ctx_lr1e3_wd1e3_do20`
+- 验证 R2：0.434
+- 验证 RMSE：1.327
+- 验证 MAE：1.011
+
+相对上一轮全量消融最佳 `chemical_species_context`，验证 R2 从 0.413 提升到 0.434，RMSE 从 1.351 降到 1.327。该结果说明加强 weight decay 到 `1e-3` 且 dropout 设为 `0.20` 可以缓解部分过拟合，但当前 deep 模型仍低于 curated 传统 ML 的 `standard + LightGBM`。
+
+已输出对应可视化图表：
+
+- 输出目录：`outputs/models/deep_tuning_batch01/图表/`
+- `深度调参_验证集指标对比`
+- `深度调参_训练验证损失曲线`
+- `深度调参_验证集真实预测散点`
+- `深度调参_验证集残差分层_终点类型`
+- `深度调参_验证集残差分层_化学类别`
+- `深度调参_验证集残差分层_物种类群`
+
+下一步建议固定 `ctx_lr1e3_wd1e3_do20`，开展 endpoint、化学类别、物种类群和 AD 分层指标表，再决定是否做 endpoint 专属模型或类别重加权。
