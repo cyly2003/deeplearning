@@ -1,6 +1,6 @@
 data:
   clean_sqlite: outputs/databases/ecotox_clean.sqlite
-  joined_view: ecotox_toxicity_joined
+  joined_view: ecotox_toxicity_joined_curated
   output_table: outputs/tables/modeling_toxicity_long.parquet
   output_csv: outputs/tables/modeling_toxicity_long.csv
   report_json: outputs/reports/modeling_table_build_report.json

@@ -34,6 +34,25 @@ def test_set_publication_style_updates_matplotlib_rcparams() -> None:
     assert matplotlib.rcParams["savefig.dpi"] >= 300
 
 
+def test_save_figure_applies_bold_weight_to_text(tmp_path) -> None:
+    matplotlib = pytest.importorskip("matplotlib")
+    matplotlib.use("Agg", force=True)
+    pyplot = pytest.importorskip("matplotlib.pyplot")
+
+    from qsar_dl.visualization import save_figure, set_publication_style
+
+    set_publication_style(font_weight="bold")
+    fig, ax = pyplot.subplots()
+    ax.set_title("Diagnostic")
+    ax.set_xlabel("Observed")
+    ax.set_ylabel("Predicted")
+    text = ax.text(0.5, 0.5, "R2=0.90")
+
+    save_figure(fig, tmp_path / "bold_text", formats=["png"], close=True)
+
+    assert text.get_fontweight() == "bold"
+
+
 def test_save_figure_exports_publication_formats(tmp_path) -> None:
     matplotlib = pytest.importorskip("matplotlib")
     matplotlib.use("Agg", force=True)

@@ -1,6 +1,16 @@
 runtime:
   device: cuda
   num_workers: 4
+server:
+  host: ""
+  user: ""
+  project_dir: ""
+  conda_env: ""
+  cuda_visible_devices: "0"
+  ssh_port: 22
+training:
+  experiment_config: configs/experiments/main_residual_qsar.yaml
+  output_dir: outputs/models
 logging:
   level: INFO
   save_resolved_config: true

@@ -1,8 +1,15 @@
 evaluation:
+  strategy: chemical_category_holdout
   split_strategy: chemical_category_holdout
+  chemical_id_column: chemical_id
+  category_column: chemical_category
+  confidence_column: category_confidence
+  evidence_column: category_evidence
+  split_column: split
   category_assignment_table: outputs/tables/chemical_category_assignments.csv
   split_table: outputs/tables/data_splits.parquet
   report_json: outputs/reports/split_report.json
+  random_seed: 20260524
   categories:
     - PAHs
     - TPHs
@@ -19,3 +26,20 @@ evaluation:
     - other_unknown
   validation_fraction_within_train_categories: 0.15
   holdout_categories: []
+  category_assignment:
+    name_columns:
+      - chemical_name
+      - preferred_name
+      - name
+      - common_name
+      - substance_name
+      - cas_name
+    smiles_column: smiles
+    existing_category_columns:
+      - chemical_category
+      - category
+      - chemical_class
+      - chemical_group
+      - ecotox_group
+      - pollutant_class
+      - use_class

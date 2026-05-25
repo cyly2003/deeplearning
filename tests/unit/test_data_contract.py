@@ -109,6 +109,22 @@ def test_derive_concentration_records_censored_operator() -> None:
     assert "conc1_mean_censored_lt" in result["qa_flags"]
 
 
+def test_derive_concentration_prefers_standardized_value_and_keeps_original_unit() -> None:
+    result = derive_concentration(
+        {
+            "conc1_mean": "1000",
+            "conc1_unit": "ug/L",
+            "conc1_mean_standardized": 1.0,
+            "conc1_standard_unit": "mg/L",
+            "conc1_standardization_status": "standardized",
+        }
+    )
+
+    assert result["conc_value"] == 1.0
+    assert result["conc_unit"] == "mg/L"
+    assert result["conc_unit_original"] == "ug/L"
+
+
 def test_derive_duration_exposure_mean_days_to_hours() -> None:
     result = derive_duration(
         {
@@ -120,6 +136,19 @@ def test_derive_duration_exposure_mean_days_to_hours() -> None:
     assert result["duration_h"] == 48.0
     assert result["duration_derivation_method"] == "exposure_mean"
     assert result["duration_missing_flag"] is False
+
+
+def test_derive_duration_prefers_standardized_hours() -> None:
+    result = derive_duration(
+        {
+            "exposure_duration_mean": "2",
+            "exposure_duration_unit": "d",
+            "exposure_duration_mean_h": 48.0,
+        }
+    )
+
+    assert result["duration_h"] == 48.0
+    assert result["duration_derivation_method"] == "exposure_mean"
 
 
 def test_derive_duration_observation_mean_fallback() -> None:
@@ -210,6 +239,21 @@ def test_standardize_target_units_oral_daily() -> None:
     )
 
     assert result["target_unit_family"] == "oral_mg_kg_d"
+    assert result["target_mg_kg_d"] == 5.0
+    assert result["target_ptox"] is None
+
+
+def test_standardize_target_units_mass_per_mass_to_mg_kg() -> None:
+    result = standardize_target_units(
+        {
+            "conc_value": 1000.0,
+            "conc_unit": "ug/kg",
+            "primary_medium": "soil",
+        }
+    )
+
+    assert result["target_unit_family"] == "soil_mg_kg"
+    assert result["target_mg_kg"] == 1.0
     assert result["target_ptox"] is None
 
 
@@ -280,6 +324,46 @@ def test_load_clean_sqlite_augments_primary_medium_from_species(tmp_path: Path) 
     loaded = load_clean_sqlite(database)
 
     assert loaded["joined"].loc[0, "primary_medium"] == "aquatic"
+
+
+def test_load_clean_sqlite_augments_curated_categories(tmp_path: Path) -> None:
+    database = tmp_path / "clean.sqlite"
+    with sqlite3.connect(database) as conn:
+        conn.execute(
+            """
+            CREATE TABLE ecotox_toxicity_joined (
+                result_id INTEGER,
+                cas_number TEXT,
+                species_number INTEGER,
+                endpoint TEXT
+            )
+            """
+        )
+        conn.execute("INSERT INTO ecotox_toxicity_joined VALUES (1, '50-00-0', 99, 'LC50')")
+        conn.execute(
+            """
+            CREATE TABLE chemical_category_curated (
+                cas_number TEXT,
+                chemical_class_l2 TEXT
+            )
+            """
+        )
+        conn.execute("INSERT INTO chemical_category_curated VALUES ('50-00-0', 'metal_metalloid')")
+        conn.execute(
+            """
+            CREATE TABLE species_category_curated (
+                species_number INTEGER,
+                taxon_group_l2 TEXT,
+                is_standard_test_species INTEGER
+            )
+            """
+        )
+        conn.execute("INSERT INTO species_category_curated VALUES (99, 'crustacean', 1)")
+
+    loaded = load_clean_sqlite(database)
+
+    assert loaded["joined"].loc[0, "chemical_class_l2"] == "metal_metalloid"
+    assert loaded["joined"].loc[0, "taxon_group_l2"] == "crustacean"
 
 
 def test_build_modeling_table_writes_report_and_transfer_candidates(tmp_path: Path) -> None:
@@ -450,6 +534,7 @@ def test_build_modeling_table_writes_report_and_transfer_candidates(tmp_path: Pa
     assert len(table) == 3
     assert table.loc[table["result_id"] == 1, "is_main_water_task"].item() is True
     assert table.loc[table["result_id"] == 2, "is_transfer_candidate"].item() is True
+    assert table.loc[table["result_id"] == 2, "is_transfer_model_ready"].item() is False
     assert table.loc[table["result_id"] == 1, "duration_h"].item() == 48.0
     assert math.isclose(
         table.loc[table["result_id"] == 1, "target_ptox"].item(), 4.0
@@ -458,6 +543,7 @@ def test_build_modeling_table_writes_report_and_transfer_candidates(tmp_path: Pa
     assert report["total_rows"] == 3
     assert report["main_water_task_rows"] == 1
     assert report["transfer_candidate_rows"] == 1
+    assert report["transfer_model_ready_rows"] == 0
     assert report["missing_smiles_rows"] == 1
     assert report["missing_mw_rows"] == 1
     assert "missing_or_invalid_target" in report["not_modelable_reason_counts"]

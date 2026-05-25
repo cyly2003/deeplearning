@@ -1,12 +1,81 @@
-species:
-  enabled: false
-  status: deferred
-  reason: Species context features are still under construction.
+species_features:
+  enabled: true
+  status: active
   primary_medium_field: primary_medium
   lifestage_field: organism_lifestage
   missing_category: unknown
-  include_taxonomy: false
-  include_eco_group: false
+  include_taxonomy: true
+  include_eco_group: true
   include_primary_medium: true
-  include_lifestage: false
+  include_lifestage: true
   include_potential_routes: false
+  deduplicate: false
+  identifier_columns:
+    - species_id
+    - species_number
+  species_number_column: species_number
+  scientific_name_columns:
+    - scientific_name
+    - latin_name
+  deduplicate_columns:
+    - species_id
+    - species_number
+    - scientific_name
+    - latin_name
+
+  taxonomy:
+    hash_buckets: 4096
+    levels:
+      kingdom:
+        - taxonomy_kingdom
+        - kingdom
+      phylum:
+        - taxonomy_phylum
+        - phylum_division
+        - phylum
+      class:
+        - taxonomy_class
+        - class
+        - class_name
+      order:
+        - taxonomy_order
+        - tax_order
+        - order
+      family:
+        - taxonomy_family
+        - family
+      genus:
+        - taxonomy_genus
+        - genus
+
+  eco_group_columns:
+    - eco_group
+    - species_ecotox_group
+    - ecotox_group
+  eco_group_hash_buckets: 512
+
+  primary_medium:
+    categories:
+      - aquatic
+      - sediment
+      - soil
+      - terrestrial
+      - unknown
+    main_water_values:
+      - aquatic
+
+  lifestage:
+    categories:
+      - adult
+      - juvenile
+      - larva
+      - egg_embryo
+      - seedling
+      - seed
+      - mixed
+      - other
+      - unknown
+
+  output:
+    write: false
+    features_table: outputs/features/species_features.parquet

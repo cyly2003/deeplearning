@@ -8,172 +8,61 @@ groups:
     initial_group_weight: 1.0
     bias_init: 0.0
     descriptors:
-      MolLogP:
+      rdkit_descriptor_mol_logp:
         role: core
         initial_weight: 1.0
-      MolMR:
-        role: auxiliary
-        initial_weight: 0.5
   polarity_hbond:
     description: Polarity, hydrogen bonding and polar surface descriptors.
     initial_group_weight: 1.0
     bias_init: 0.0
     descriptors:
-      TPSA:
+      rdkit_descriptor_tpsa:
         role: core
         initial_weight: 1.0
-      NumHDonors:
+      rdkit_descriptor_h_bond_donors:
         role: core
         initial_weight: 1.0
-      NumHAcceptors:
+      rdkit_descriptor_h_bond_acceptors:
         role: core
         initial_weight: 1.0
-      LabuteASA:
-        role: auxiliary
-        initial_weight: 0.5
   electronic_reactivity:
-    description: Partial-charge proxies for electronic reactivity.
+    description: Formal-charge proxy for electronic reactivity and ionization.
     initial_group_weight: 1.0
     bias_init: 0.0
     descriptors:
-      MaxPartialCharge:
+      rdkit_descriptor_formal_charge:
         role: core
         initial_weight: 1.0
-      MinPartialCharge:
-        role: core
-        initial_weight: 1.0
-      MaxAbsPartialCharge:
-        role: auxiliary
-        initial_weight: 0.5
-      MinAbsPartialCharge:
-        role: auxiliary
-        initial_weight: 0.5
   topology_connectivity:
-    description: Molecular graph topology and connectivity descriptors.
+    description: Compact graph topology descriptors.
     initial_group_weight: 1.0
     bias_init: 0.0
     descriptors:
-      BertzCT:
+      rdkit_descriptor_ring_count:
         role: core
         initial_weight: 1.0
-      Chi0:
-        role: auxiliary
-        initial_weight: 0.5
-      Chi1:
-        role: auxiliary
-        initial_weight: 0.5
-      Chi0n:
-        role: auxiliary
-        initial_weight: 0.5
-      Chi1n:
-        role: auxiliary
-        initial_weight: 0.5
-      Kappa1:
-        role: auxiliary
-        initial_weight: 0.5
-      Kappa2:
-        role: auxiliary
-        initial_weight: 0.5
-      Kappa3:
-        role: auxiliary
-        initial_weight: 0.5
   size_shape:
     description: Molecular size, atom-count and mass descriptors.
     initial_group_weight: 1.0
     bias_init: 0.0
     descriptors:
-      MolWt:
+      rdkit_descriptor_mol_wt:
         role: core
         initial_weight: 1.0
-      ExactMolWt:
+      rdkit_descriptor_exact_mol_wt:
         role: auxiliary
         initial_weight: 0.5
-      HeavyAtomCount:
+      rdkit_descriptor_heavy_atom_count:
         role: core
         initial_weight: 1.0
-      NumValenceElectrons:
-        role: auxiliary
-        initial_weight: 0.5
-  ring_aromaticity:
-    description: Ring burden, aromaticity and carbocycle or heterocycle counts.
-    initial_group_weight: 1.0
-    bias_init: 0.0
-    descriptors:
-      RingCount:
-        role: core
-        initial_weight: 1.0
-      NumAromaticRings:
-        role: core
-        initial_weight: 1.0
-      NumAliphaticRings:
-        role: auxiliary
-        initial_weight: 0.5
-      NumAromaticHeterocycles:
-        role: auxiliary
-        initial_weight: 0.5
-      NumAromaticCarbocycles:
-        role: auxiliary
-        initial_weight: 0.5
   flexibility_saturation:
     description: Conformational flexibility and saturation descriptors.
     initial_group_weight: 1.0
     bias_init: 0.0
     descriptors:
-      NumRotatableBonds:
+      rdkit_descriptor_rotatable_bonds:
         role: core
         initial_weight: 1.0
-      FractionCSP3:
+      rdkit_descriptor_fraction_csp3:
         role: core
         initial_weight: 1.0
-      NumSaturatedRings:
-        role: auxiliary
-        initial_weight: 0.5
-      NumSaturatedHeterocycles:
-        role: auxiliary
-        initial_weight: 0.5
-      NumSaturatedCarbocycles:
-        role: auxiliary
-        initial_weight: 0.5
-  charge_ionization_proxy:
-    description: Heteroatom and donor or acceptor count proxies for ionization potential.
-    initial_group_weight: 1.0
-    bias_init: 0.0
-    descriptors:
-      NumHeteroatoms:
-        role: core
-        initial_weight: 1.0
-      NHOHCount:
-        role: auxiliary
-        initial_weight: 0.5
-      NOCount:
-        role: auxiliary
-        initial_weight: 0.5
-  fragment_alerts:
-    description: Toxicophore-like structural fragment alerts.
-    initial_group_weight: 1.0
-    bias_init: 0.0
-    descriptors:
-      fr_phenol:
-        role: auxiliary
-        initial_weight: 0.5
-      fr_aniline:
-        role: auxiliary
-        initial_weight: 0.5
-      fr_halogen:
-        role: auxiliary
-        initial_weight: 0.5
-      fr_nitro:
-        role: auxiliary
-        initial_weight: 0.5
-      fr_ester:
-        role: auxiliary
-        initial_weight: 0.5
-      fr_ether:
-        role: auxiliary
-        initial_weight: 0.5
-      fr_Al_COO:
-        role: auxiliary
-        initial_weight: 0.5
-      fr_Ar_N:
-        role: auxiliary
-        initial_weight: 0.5

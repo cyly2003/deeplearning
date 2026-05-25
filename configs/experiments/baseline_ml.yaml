@@ -1,0 +1,94 @@
+experiment:
+  id: baseline_ml_v001
+  seed: 20260524
+  output_dir: outputs/models/${experiment.id}
+includes:
+  data: configs/data/ecotox_clean_sqlite.yaml
+  descriptor_groups: configs/features/descriptor_groups_rdkit.yaml
+  species_features: configs/features/species_context.yaml
+  evaluation: configs/evaluation/chemical_category_holdout.yaml
+  runtime: configs/runtime/local.yaml
+target:
+  column: target_ptox
+  unit_family: water_mg_l
+model:
+  name: traditional_ml_baseline
+  target_column: target_ptox
+baseline_ml:
+  models:
+    - pls
+    - elasticnet
+    - random_forest
+    - xgboost
+    - lightgbm
+  scope: main_water_task
+  max_rows: null
+  split_column: split
+  train_values: [train]
+  test_values: [test, validation, val]
+  test_size: 0.25
+  context_columns:
+    - primary_medium
+    - organism_lifestage
+    - taxon_group_l1
+    - taxon_group_l2
+    - taxon_group_l3
+    - is_standard_test_species
+    - is_us_invasive_species
+    - is_us_threatened_endangered
+    - chemical_class_l1
+    - chemical_class_l2
+    - chemical_class_l3
+    - use_source_class
+    - endpoint_family
+    - effect_level
+    - duration_h
+  feature_sets:
+    - name: standard
+      type: standard
+      feature_columns:
+        - rdkit_descriptor_mol_wt
+        - rdkit_descriptor_exact_mol_wt
+        - rdkit_descriptor_mol_logp
+        - rdkit_descriptor_tpsa
+        - rdkit_descriptor_h_bond_donors
+        - rdkit_descriptor_h_bond_acceptors
+        - rdkit_descriptor_rotatable_bonds
+        - rdkit_descriptor_ring_count
+        - rdkit_descriptor_heavy_atom_count
+        - rdkit_descriptor_fraction_csp3
+        - rdkit_descriptor_formal_charge
+        - molecular_weight_g_mol
+        - logkow
+        - molecular_weight_g_mol_missing_flag
+        - logkow_missing_flag
+    - name: fixed_descriptor_groups
+      type: fixed_descriptor_groups
+      descriptor_group_path: configs/features/descriptor_groups_rdkit.yaml
+  model_params:
+    pls:
+      n_components: 2
+    elasticnet:
+      alpha: 0.1
+      l1_ratio: 0.5
+    svr:
+      kernel: rbf
+      C: 1.0
+      epsilon: 0.1
+    random_forest:
+      n_estimators: 80
+      min_samples_leaf: 5
+      n_jobs: -1
+    xgboost:
+      n_estimators: 200
+      learning_rate: 0.05
+      max_depth: 4
+      tree_method: hist
+      n_jobs: -1
+    lightgbm:
+      n_estimators: 200
+      learning_rate: 0.05
+      n_jobs: -1
+logging:
+  level: INFO
+  save_resolved_config: true

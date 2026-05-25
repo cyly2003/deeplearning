@@ -8,6 +8,7 @@ import math
 import re
 import sqlite3
 from collections import Counter
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -55,8 +56,19 @@ REQUIRED_OUTPUT_COLUMNS = [
     "taxonomy_family",
     "taxonomy_genus",
     "species_ecotox_group",
+    "taxon_group_l1",
+    "taxon_group_l2",
+    "taxon_group_l3",
+    "is_standard_test_species",
+    "is_us_invasive_species",
+    "is_us_threatened_endangered",
     "primary_medium",
     "organism_lifestage",
+    "chemical_class_l1",
+    "chemical_class_l2",
+    "chemical_class_l3",
+    "use_source_class",
+    "structure_flags",
     "endpoint_raw",
     "endpoint_family",
     "effect_level",
@@ -67,6 +79,7 @@ REQUIRED_OUTPUT_COLUMNS = [
     "response_site_comments",
     "conc_value",
     "conc_unit",
+    "conc_unit_original",
     "conc_derivation_method",
     "conc1_type",
     "duration_h",
@@ -74,6 +87,8 @@ REQUIRED_OUTPUT_COLUMNS = [
     "duration_missing_flag",
     "num_doses_used",
     "target_mg_l",
+    "target_mg_kg",
+    "target_mg_kg_d",
     "target_mol_l",
     "target_ptox",
     "target_unit_family",
@@ -81,6 +96,7 @@ REQUIRED_OUTPUT_COLUMNS = [
     "qa_flags",
     "is_main_water_task",
     "is_transfer_candidate",
+    "is_transfer_model_ready",
 ]
 
 
@@ -117,21 +133,30 @@ def load_clean_sqlite(database_path: Path) -> Mapping[str, pd.DataFrame]:
 def derive_concentration(row: Mapping[str, object]) -> dict[str, object]:
     """Return concentration value, unit, dose count, method, and QA flags."""
     qa_flags: list[str] = []
-    conc_unit = _clean_text(row.get("conc1_unit"))
+    original_unit = _clean_text(row.get("conc1_unit"))
+    standardized_unit = _clean_text(row.get("conc1_standard_unit"))
+    conc_unit = standardized_unit or original_unit
+    mean_key = "conc1_mean_standardized" if standardized_unit else "conc1_mean"
+    min_key = "conc1_min_standardized" if standardized_unit else "conc1_min"
+    max_key = "conc1_max_standardized" if standardized_unit else "conc1_max"
+    status = _clean_text(row.get("conc1_standardization_status"))
+    if status and status not in {"standardized", "missing"}:
+        qa_flags.append(f"conc1_standardization_{status}")
     qa_flags.extend(_operator_qa(row, "conc1_mean_op", "conc1_mean"))
 
-    mean_value = _to_float(row.get("conc1_mean"))
+    mean_value = _to_float(row.get(mean_key))
     if mean_value is not None:
         return {
             "conc_value": mean_value,
             "conc_unit": conc_unit,
+            "conc_unit_original": original_unit,
             "num_doses_used": _derive_num_doses(row, qa_flags),
             "conc_derivation_method": "mean",
             "qa_flags": qa_flags,
         }
 
-    min_value = _to_float(row.get("conc1_min"))
-    max_value = _to_float(row.get("conc1_max"))
+    min_value = _to_float(row.get(min_key))
+    max_value = _to_float(row.get(max_key))
     qa_flags.extend(_operator_qa(row, "conc1_min_op", "conc1_min"))
     qa_flags.extend(_operator_qa(row, "conc1_max_op", "conc1_max"))
 
@@ -143,6 +168,7 @@ def derive_concentration(row: Mapping[str, object]) -> dict[str, object]:
         return {
             "conc_value": _dose_grid_midpoint(min_value, max_value, int(num_doses)),
             "conc_unit": conc_unit,
+            "conc_unit_original": original_unit,
             "num_doses_used": float(num_doses),
             "conc_derivation_method": "direct_range_midpoint",
             "qa_flags": qa_flags,
@@ -151,6 +177,7 @@ def derive_concentration(row: Mapping[str, object]) -> dict[str, object]:
     return {
         "conc_value": None,
         "conc_unit": conc_unit,
+        "conc_unit_original": original_unit,
         "num_doses_used": _derive_num_doses(row, qa_flags),
         "conc_derivation_method": "missing",
         "qa_flags": qa_flags,
@@ -163,9 +190,21 @@ def derive_duration(row: Mapping[str, object]) -> dict[str, object]:
     candidates = [
         (
             "exposure_mean",
+            row.get("exposure_duration_mean_h"),
+            "h",
+            "exposure_duration_mean_op",
+        ),
+        (
+            "exposure_mean",
             row.get("exposure_duration_mean"),
             row.get("exposure_duration_unit"),
             "exposure_duration_mean_op",
+        ),
+        (
+            "observation_mean",
+            row.get("obs_duration_mean_h"),
+            "h",
+            "obs_duration_mean_op",
         ),
         (
             "observation_mean",
@@ -190,6 +229,14 @@ def derive_duration(row: Mapping[str, object]) -> dict[str, object]:
         qa_flags.append(f"{method}_unit_unrecognized")
 
     range_candidates = [
+        (
+            "exposure_range_grid_mid",
+            row.get("exposure_duration_min_h"),
+            row.get("exposure_duration_max_h"),
+            "h",
+            "exposure_duration_min_op",
+            "exposure_duration_max_op",
+        ),
         (
             "exposure_range_grid_mid",
             row.get("exposure_duration_min"),
@@ -306,12 +353,16 @@ def standardize_target_units(row: Mapping[str, object]) -> dict[str, object]:
     )
 
     target_mg_l: float | None = None
+    target_mg_kg: float | None = None
+    target_mg_kg_d: float | None = None
     target_mol_l: float | None = None
     target_unit_family = "other"
 
     if value is None or value <= 0 or not unit:
         return {
             "target_mg_l": None,
+            "target_mg_kg": None,
+            "target_mg_kg_d": None,
             "target_mol_l": None,
             "target_ptox": None,
             "target_unit_family": target_unit_family,
@@ -329,12 +380,18 @@ def standardize_target_units(row: Mapping[str, object]) -> dict[str, object]:
         target_mol_l = value * mol_factor
         if molecular_weight is not None and molecular_weight > 0:
             target_mg_l = target_mol_l * molecular_weight * 1000.0
-    elif _is_oral_daily_unit(unit):
+    oral_daily_factor = _oral_daily_factor_to_mg_kg_d(unit)
+    mass_per_mass_factor = _mass_per_mass_factor_to_mg_kg(unit)
+    if target_unit_family == "water_mg_l":
+        pass
+    elif oral_daily_factor is not None:
         target_unit_family = "oral_mg_kg_d"
-    elif _is_mass_per_mass_unit(unit):
+        target_mg_kg_d = value * oral_daily_factor
+    elif mass_per_mass_factor is not None:
         target_unit_family = (
             "sediment_mg_kg" if "sediment" in medium_hint else "soil_mg_kg"
         )
+        target_mg_kg = value * mass_per_mass_factor
 
     target_ptox = None
     if target_mol_l is not None and target_mol_l > 0:
@@ -342,6 +399,8 @@ def standardize_target_units(row: Mapping[str, object]) -> dict[str, object]:
 
     return {
         "target_mg_l": target_mg_l,
+        "target_mg_kg": target_mg_kg,
+        "target_mg_kg_d": target_mg_kg_d,
         "target_mol_l": target_mol_l,
         "target_ptox": target_ptox,
         "target_unit_family": target_unit_family,
@@ -365,26 +424,29 @@ def build_modeling_table(config_path: Path) -> pd.DataFrame:
         )
 
     joined = _load_joined_frame(database_path, data_config.get("joined_view"))
-    records = joined.to_dict(orient="records")
     output_records: list[dict[str, Any]] = []
+    joined_columns = list(joined.columns)
     target_endpoints = {str(value).upper() for value in target_config["endpoints"]}
     main_medium_values = {
         str(value).strip().lower() for value in target_config["main_medium_values"]
     }
 
-    for source_row in records:
+    for source_values in joined.itertuples(index=False, name=None):
+        source_row = dict(zip(joined_columns, source_values))
+        molecular_weight = _get_molecular_weight(source_row)
+        source_row_with_mw = {**source_row, "molecular_weight_g_mol": molecular_weight}
         conc = derive_concentration(source_row)
         duration = derive_duration(source_row)
         endpoint = parse_endpoint(
             _clean_text(source_row.get("endpoint")),
             _clean_text(source_row.get("effect")),
         )
-        target_row = {**source_row, **conc}
+        target_row = {**source_row_with_mw, **conc}
         target = standardize_target_units(target_row)
         qa_flags = _merge_flags(
             conc.get("qa_flags"),
             duration.get("qa_flags"),
-            _source_quality_flags(source_row, endpoint, target),
+            _source_quality_flags(target_row, endpoint, target),
         )
 
         medium = _clean_text(source_row.get(target_config["main_medium_field"]))
@@ -401,13 +463,18 @@ def build_modeling_table(config_path: Path) -> pd.DataFrame:
             target_unit_family=str(target["target_unit_family"]),
             is_main=is_main,
         )
+        is_transfer_model_ready = (
+            is_transfer
+            and endpoint_family in target_endpoints
+            and _to_float(target_value) is not None
+        )
         not_modelable_reasons = _not_modelable_reasons(
             medium=medium,
             main_medium_values=main_medium_values,
             endpoint_family=endpoint_family,
             target_endpoints=target_endpoints,
             target=target,
-            source_row=source_row,
+            source_row=target_row,
             is_main=is_main,
         )
 
@@ -423,7 +490,7 @@ def build_modeling_table(config_path: Path) -> pd.DataFrame:
                 "casrn": _first_present(source_row, ["cas_number", "casrn", "test_cas"]),
                 "dtxsid": source_row.get("dtxsid"),
                 "smiles": source_row.get("smiles"),
-                "molecular_weight_g_mol": _get_molecular_weight(source_row),
+                "molecular_weight_g_mol": molecular_weight,
                 "species_id": source_row.get("species_number"),
                 "species_number": source_row.get("species_number"),
                 "scientific_name": _first_present(
@@ -436,8 +503,19 @@ def build_modeling_table(config_path: Path) -> pd.DataFrame:
                 "taxonomy_family": source_row.get("family"),
                 "taxonomy_genus": source_row.get("genus"),
                 "species_ecotox_group": source_row.get("species_ecotox_group"),
+                "taxon_group_l1": source_row.get("taxon_group_l1"),
+                "taxon_group_l2": source_row.get("taxon_group_l2"),
+                "taxon_group_l3": source_row.get("taxon_group_l3"),
+                "is_standard_test_species": source_row.get("is_standard_test_species"),
+                "is_us_invasive_species": source_row.get("is_us_invasive_species"),
+                "is_us_threatened_endangered": source_row.get("is_us_threatened_endangered"),
                 "primary_medium": source_row.get("primary_medium"),
                 "organism_lifestage": source_row.get("organism_lifestage"),
+                "chemical_class_l1": source_row.get("chemical_class_l1"),
+                "chemical_class_l2": source_row.get("chemical_class_l2"),
+                "chemical_class_l3": source_row.get("chemical_class_l3"),
+                "use_source_class": source_row.get("use_source_class"),
+                "structure_flags": source_row.get("structure_flags"),
                 "endpoint_raw": source_row.get("endpoint"),
                 "endpoint_family": endpoint_family,
                 "effect_level": endpoint["effect_level"],
@@ -448,6 +526,7 @@ def build_modeling_table(config_path: Path) -> pd.DataFrame:
                 "response_site_comments": source_row.get("response_site_comments"),
                 "conc_value": conc["conc_value"],
                 "conc_unit": conc["conc_unit"],
+                "conc_unit_original": conc["conc_unit_original"],
                 "conc_derivation_method": conc["conc_derivation_method"],
                 "conc1_type": source_row.get("conc1_type"),
                 "duration_h": duration["duration_h"],
@@ -455,6 +534,8 @@ def build_modeling_table(config_path: Path) -> pd.DataFrame:
                 "duration_missing_flag": duration["duration_missing_flag"],
                 "num_doses_used": conc["num_doses_used"],
                 "target_mg_l": target["target_mg_l"],
+                "target_mg_kg": target["target_mg_kg"],
+                "target_mg_kg_d": target["target_mg_kg_d"],
                 "target_mol_l": target["target_mol_l"],
                 "target_ptox": target["target_ptox"],
                 "target_unit_family": target["target_unit_family"],
@@ -463,6 +544,7 @@ def build_modeling_table(config_path: Path) -> pd.DataFrame:
                 "not_modelable_reasons": ";".join(not_modelable_reasons),
                 "is_main_water_task": is_main,
                 "is_transfer_candidate": is_transfer,
+                "is_transfer_model_ready": is_transfer_model_ready,
             }
         )
 
@@ -612,6 +694,42 @@ def _augment_joined_frame(
                     )
                     if "cas_number_chemical_extra" in augmented.columns:
                         augmented = augmented.drop(columns=["cas_number_chemical_extra"])
+    if "chemical_category_curated" in names:
+        curated_chemicals = pd.read_sql_query("SELECT * FROM chemical_category_curated", conn)
+        if "cas_number" in curated_chemicals.columns:
+            left_key = "cas_number" if "cas_number" in augmented.columns else "test_cas"
+            if left_key in augmented.columns:
+                extra_columns = [
+                    column
+                    for column in curated_chemicals.columns
+                    if column not in augmented.columns or column == "cas_number"
+                ]
+                if len(extra_columns) > 1:
+                    augmented = augmented.merge(
+                        curated_chemicals[extra_columns],
+                        left_on=left_key,
+                        right_on="cas_number",
+                        how="left",
+                        suffixes=("", "_curated_chemical_extra"),
+                    )
+                    if "cas_number_curated_chemical_extra" in augmented.columns:
+                        augmented = augmented.drop(columns=["cas_number_curated_chemical_extra"])
+
+    if "species_category_curated" in names and "species_number" in augmented.columns:
+        curated_species = pd.read_sql_query("SELECT * FROM species_category_curated", conn)
+        if "species_number" in curated_species.columns:
+            extra_columns = [
+                column
+                for column in curated_species.columns
+                if column not in augmented.columns or column == "species_number"
+            ]
+            if len(extra_columns) > 1:
+                augmented = augmented.merge(
+                    curated_species[extra_columns],
+                    on="species_number",
+                    how="left",
+                    suffixes=("", "_curated_species_extra"),
+                )
     return augmented
 
 
@@ -663,6 +781,7 @@ def _write_report(
         "total_rows": int(len(modeling_table)),
         "main_water_task_rows": int(modeling_table["is_main_water_task"].sum()),
         "transfer_candidate_rows": int(modeling_table["is_transfer_candidate"].sum()),
+        "transfer_model_ready_rows": int(modeling_table["is_transfer_model_ready"].sum()),
         "missing_smiles_rows": int(modeling_table["smiles"].isna().sum()),
         "missing_mw_rows": int(modeling_table["molecular_weight_g_mol"].isna().sum()),
         "conc_derivation_method_counts": _value_counts(modeling_table, "conc_derivation_method"),
@@ -845,16 +964,32 @@ def _get_molecular_weight(row: Mapping[str, object]) -> float | None:
     smiles = _clean_text(row.get("smiles"))
     if not smiles:
         return None
-    try:  # Optional: RDKit may be supplied by the chemistry feature environment.
-        from rdkit import Chem
-        from rdkit.Chem import Descriptors
+    return _molecular_weight_from_smiles(smiles)
 
-        molecule = Chem.MolFromSmiles(smiles)
+
+@lru_cache(maxsize=50000)
+def _molecular_weight_from_smiles(smiles: str) -> float | None:
+    try:  # Optional: RDKit may be supplied by the chemistry feature environment.
+        rdkit_tools = _rdkit_mw_tools()
+        if rdkit_tools is None:
+            return None
+        chem, descriptors = rdkit_tools
+        molecule = chem.MolFromSmiles(smiles)
         if molecule is None:
             return None
-        return float(Descriptors.MolWt(molecule))
+        return float(descriptors.MolWt(molecule))
     except Exception:
         return None
+
+
+@lru_cache(maxsize=1)
+def _rdkit_mw_tools() -> tuple[Any, Any] | None:
+    try:
+        from rdkit import Chem
+        from rdkit.Chem import Descriptors
+    except Exception:
+        return None
+    return Chem, Descriptors
 
 
 def _water_mass_per_volume_factor_to_mg_l(unit: str) -> float | None:
@@ -893,31 +1028,41 @@ def _molar_factor_to_mol_l(unit: str) -> float | None:
 
 
 def _is_mass_per_mass_unit(unit: str) -> bool:
+    return _mass_per_mass_factor_to_mg_kg(unit) is not None
+
+
+def _mass_per_mass_factor_to_mg_kg(unit: str) -> float | None:
     compact = unit.replace(" ", "")
-    return compact in {
-        "mg/kg",
-        "mgkg-1",
-        "ug/kg",
-        "ugkg-1",
-        "ng/kg",
-        "ngkg-1",
-        "g/kg",
-        "gkg-1",
+    factors = {
+        "mg/kg": 1.0,
+        "mgkg-1": 1.0,
+        "ug/kg": 0.001,
+        "ugkg-1": 0.001,
+        "ng/kg": 0.000001,
+        "ngkg-1": 0.000001,
+        "g/kg": 1000.0,
+        "gkg-1": 1000.0,
     }
+    return factors.get(compact)
 
 
 def _is_oral_daily_unit(unit: str) -> bool:
+    return _oral_daily_factor_to_mg_kg_d(unit) is not None
+
+
+def _oral_daily_factor_to_mg_kg_d(unit: str) -> float | None:
     compact = unit.replace(" ", "")
-    return compact in {
-        "mg/kg/d",
-        "mg/kg/day",
-        "mgkg-1d-1",
-        "mgkg-1day-1",
-        "ug/kg/d",
-        "ug/kg/day",
-        "ugkg-1d-1",
-        "ugkg-1day-1",
+    factors = {
+        "mg/kg/d": 1.0,
+        "mg/kg/day": 1.0,
+        "mgkg-1d-1": 1.0,
+        "mgkg-1day-1": 1.0,
+        "ug/kg/d": 0.001,
+        "ug/kg/day": 0.001,
+        "ugkg-1d-1": 0.001,
+        "ugkg-1day-1": 0.001,
     }
+    return factors.get(compact)
 
 
 def _normalize_unit(unit: object) -> str:

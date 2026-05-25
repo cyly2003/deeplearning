@@ -90,7 +90,8 @@ outputs/reports/modeling_table_build_report.json
 | `endpoint_comments` | string/null | `results.endpoint_comments` | 终点备注 |
 | `response_site_comments` | string/null | `results.response_site_comments` | 响应部位备注 |
 | `conc_value` | float/null | 规则派生 | 优先 `conc1_mean` |
-| `conc_unit` | string/null | `conc1_unit` | 浓度单位 |
+| `conc_unit` | string/null | 标准化字段优先 | 建模使用单位；可识别单位已统一到 `mg/L`、`mol/L`、`mg/kg` 或 `mg/kg/d` |
+| `conc_unit_original` | string/null | `conc1_unit` | 原始浓度单位，便于追溯 |
 | `conc_derivation_method` | string | 规则派生 | `mean/direct_range_midpoint/missing` |
 | `conc1_type` | string/null | `results.conc1_type` | 质量/不确定度特征 |
 | `duration_h` | float/null | 规则派生 | 暴露时长，小时 |
@@ -98,17 +99,32 @@ outputs/reports/modeling_table_build_report.json
 | `duration_missing_flag` | bool | 规则派生 | 是否缺失 |
 | `num_doses_used` | float | 规则派生 | 区间派生使用的剂量组数 |
 | `target_mg_l` | float/null | 单位标准化 | 水相主目标 |
+| `target_mg_kg` | float/null | 单位标准化 | 土壤/沉积物质量浓度候选目标 |
+| `target_mg_kg_d` | float/null | 单位标准化 | 经口剂量候选目标 |
 | `target_mol_l` | float/null | MW 换算 | 可计算 pTox 时使用 |
 | `target_ptox` | float/null | `-log10(target_mol_l)` | 主回归目标 |
 | `target_unit_family` | category | 单位标准化 | `water_mg_l/soil_mg_kg/oral_mg_kg_d/other` |
 | `modeling_split_group` | string/null | 化学类别模块 | 留出类别 |
 | `qa_flags` | string/list | 审计 | 分号或 JSON list |
 | `is_main_water_task` | bool | 判定规则 | 是否进入水相主训练 |
-| `is_transfer_candidate` | bool | 判定规则 | 是否进入迁移候选 |
+| `is_transfer_candidate` | bool | 宽松判定规则 | 是否进入迁移候选保留池 |
+| `is_transfer_model_ready` | bool | 严格判定规则 | 迁移候选中是否已有受支持 endpoint 和可用 `target_ptox`，可直接进入当前 pTox 框架 |
 
 ## 4. 浓度派生规则
 
 优先级：
+
+若 clean SQLite 已包含标准化字段，则建模表优先使用：
+
+```text
+conc1_mean_standardized
+> dose-grid midpoint from conc1_min_standardized/conc1_max_standardized
+> missing
+```
+
+并使用 `conc1_standard_unit` 作为建模单位，`conc1_unit` 仅作为 `conc_unit_original` 保留。
+
+若标准化字段不存在，回退到原始字段：
 
 ```text
 conc1_mean
@@ -155,6 +171,15 @@ exposure_duration_mean + exposure_duration_unit
 
 当前 clean SQLite 已保留 `exposure_duration_min/max`；若没有 `obs_duration_min/max` 字段，则该分支自动跳过。
 
+若 clean SQLite 已包含标准化字段，优先使用：
+
+```text
+exposure_duration_mean_h
+> obs_duration_mean_h
+> exposure_duration_min_h/exposure_duration_max_h
+> raw fallback
+```
+
 区间派生使用与浓度相同的 `num_doses` 中间剂量点规则。所有时长统一为小时：
 
 ```text
@@ -187,6 +212,8 @@ target_ptox = -log10(target_mol_l)
 | `sediment_mg_kg` | `mg/kg` | 迁移学习候选 |
 | `oral_mg_kg_d` | `mg/kg/d` | 暂存，不进主任务 |
 | `other` | 原单位 | 标记，等待人工确认 |
+
+注意：`mg/kg` 和 `mg/kg/d` 不直接换算为 `pTox`，因为它们不是水相 mol/L 浓度。后续土壤/沉积物迁移学习应使用独立目标或自由浓度/孔隙水浓度模型。
 
 MW 来源：
 

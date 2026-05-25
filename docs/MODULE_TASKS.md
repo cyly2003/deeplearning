@@ -81,7 +81,8 @@
 
 ## 6. 任务 E：物种上下文特征
 
-当前状态：暂缓。物种特征仍在构建中，第一波并行开发不实现该模块。
+当前状态：已恢复。`species.primary_medium` 已完成标注，分布为
+`aquatic=9775`、`sediment=513`、`soil=5019`、`terrestrial=13277`、`unknown=1014`。
 
 交付：
 
@@ -114,11 +115,13 @@
 
 ## 8. 任务 G：传统 ML baseline
 
-当前状态：等待 B/C/D 接口稳定后启动。
+当前状态：已完成首轮真实数据运行。B/C/D/E 接口已稳定，入口脚本为
+`src/run_baseline_ml_experiment.py`。
 
 交付：
 
 - `src/qsar_dl/training/baseline_ml.py`
+- `src/run_baseline_ml_experiment.py`
 - PLS、ElasticNet、SVR、RandomForest、XGBoost/LightGBM。
 
 依赖：任务 B、C、D、E。
@@ -126,11 +129,13 @@
 验收：
 
 - 标准特征和固定分组特征各跑一套。
-- 输出 metrics 和 predictions。
+- 已输出全量 PLS/ElasticNet metrics。
+- 已输出 50,000 行 RandomForest smoke metrics。
+- predictions 和分层指标仍在下一步补齐。
 
 ## 9. 任务 H：深度模型
 
-当前状态：等待 B/C/D/F 接口稳定后启动。
+当前状态：已启动骨架开发。B/C/D/F 已有接口，E 输出按可选上下文接入。
 
 交付：
 

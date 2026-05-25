@@ -1,0 +1,43 @@
+experiment:
+  id: baseline_deep_v001
+  seed: 20260524
+  output_dir: outputs/models/${experiment.id}
+includes:
+  data: configs/data/ecotox_clean_sqlite.yaml
+  chemical_features: configs/features/chemical_rdkit_morgan.yaml
+  species_features: configs/features/species_context.yaml
+  descriptor_groups: configs/features/descriptor_groups_rdkit.yaml
+  rules: configs/rules/mechanistic_rules.yaml
+  evaluation: configs/evaluation/chemical_category_holdout.yaml
+  runtime: configs/runtime/local.yaml
+model:
+  name: baseline_deep_residual_qsar
+  architecture: residual_qsar_mlp
+  target_column: target_ptox
+  dimensions:
+    descriptor_group_dim: 9
+    descriptor_global_dim: 1
+    fingerprint_dim: 2048
+    species_context_dim: 0
+    rule_feature_dim: 0
+  chemical_encoder:
+    use_descriptor_grouping: true
+    use_morgan_fingerprint: true
+    hidden_dims: [512, 256]
+    embedding_dim: 256
+    dropout: 0.1
+  context_encoder:
+    use_species: false
+    use_duration: false
+  rule_encoder:
+    enabled: false
+  residual:
+    alpha_init: 0.2
+    beta_init: 0.1
+    context_l2: 0.01
+    rule_l2: 0.01
+training:
+  smoke_helper: qsar_dl.training.train_deep.run_small_train_smoke
+  batch_size: 16
+  max_epochs: 1
+  learning_rate: 0.001

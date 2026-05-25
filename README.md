@@ -8,6 +8,8 @@
 
 第一阶段施工图见 [docs/IMPLEMENTATION_BLUEPRINT.md](docs/IMPLEMENTATION_BLUEPRINT.md)。
 
+当前进度总览见 [docs/PROJECT_PROGRESS.md](docs/PROJECT_PROGRESS.md)。
+
 接口规范文档：
 
 - [DATA_CONTRACT.md](docs/DATA_CONTRACT.md)：clean SQLite 到建模长表的数据契约。
@@ -17,3 +19,4 @@
 - [MODEL_ARCHITECTURE.md](docs/MODEL_ARCHITECTURE.md)：主模型、baseline 与迁移学习架构。
 - [EVALUATION_PROTOCOL.md](docs/EVALUATION_PROTOCOL.md)：化学类别外推、消融、AD 与 SSD 评估协议。
 - [MODULE_TASKS.md](docs/MODULE_TASKS.md)：可拆给子代理并行实现的任务说明。
+- [PROJECT_PROGRESS.md](docs/PROJECT_PROGRESS.md)：当前模块完成度、验证状态和下一步任务。
